@@ -9,10 +9,12 @@
 # This script sucks, I know.
 
 # Modules
-import urllib.request, urllib.parse, os, re, http.cookies, time, hashlib, socket, random, argparse, sys, io, gzip
+import urllib.request, urllib.parse, os, re, http.cookies, time, hashlib, socket, random, argparse, sys, io, gzip, shlex
 from collections import deque
-if 'posix' == os.name:
+try:
 	import pipes
+except ImportError:
+	pass
 
 # HTTP debug flag
 from http.client import HTTPConnection
@@ -31,7 +33,7 @@ config = dict(
       		debug = False,
 		# debugpathbase: The prefix of the path to save HTTP responses
 		# in debug mode
-      		debugpathbase = '/tmp/newpostscheck_',
+      		debugpathbase = [ '/tmp/newpostscheck_', 'newpostscheck_' ],
 		# timeout: Connection timeout, in seconds
 		timeout = 10,
 		# headers: Custom HTTP headers
@@ -46,7 +48,7 @@ config = dict(
 		# configurations dynamically, "" to disable the feature
 	      	envprefix = 'NPC_',
 		# conffile: A list of paths to search for configuration files
-      		conffile = [ 'newpostscheck.xml' ],
+      		conffile = [ '/etc/newpostscheck.xml', '~/.newpostscheck.xml','newpostscheck.xml' ],
 		# regex_default
 		regex_default = dict(post_title = 1, post_author = 1, post_url = 1, friendlyredir = 1, login_session = 1)
 		)
@@ -200,33 +202,36 @@ fdbg = getosstr(config['strlst']['fdbg'])
 # Variables
 timer = 0
 dnscacheentries = dict()
-edit = dict()
-editdata = ''
 cmdqueue = deque()
 
 # XML config parser
 def configparse(path, ignore_missing = True):
+	edit = dict()
+	editdata = ''
 	success = False
-	debug_prt('configparse: Start parsing: {}', path)
+	debug_prt('configparse(): Start parsing: {} ({})', path, ignore_missing)
+	if not path:
+		return False
 	if isinstance(path, list):
-		for i in path[:-2]:
-			if configparse(path, ignore_missing):
+		for i in path[:-1]:
+			if configparse(i, True):
 				success = True
 		if not success:
-			success = configparse(path[-1], True)
+			success = configparse(path[-1], ignore_missing)
 		return success
+	path = os.path.expanduser(path)
 	if os.path.isdir(path):
 		debug_prt('configparse: Directory recursion: {}', path)
 		for root, dirs, files in os.walk(path):
 			for name in files:
 				if name.endswith('.xml'):
-					configparse(join(root, name))
+					configparse(os.path.join(root, name))
 		return True
 	import xml.parsers.expat
 	global config
 	p = xml.parsers.expat.ParserCreate()
 	def configparse_startele(name, attrs):
-		global edit, editdata
+		nonlocal edit, editdata
 		debug_prt('XML startele: {} / {}', name, repr(attrs))
 		if edit:
 			debug_prt('XML: Two edit elements are stacking: {} and {}', name, repr(edit))
@@ -249,10 +254,10 @@ def configparse(path, ignore_missing = True):
 					mode = attrs.get('mode', 'assign') )
 		elif 'include' == name:
 			edit = dict( type = 'include', 
-					ignore_missing = bool(attrs.get('ignore_missing', False)) )
+					ignore_missing = (False if attrs.get('ignore_missing', 'True') in { 'False', 'false', '0' } else True) )
 		editdata = ''
 	def configparse_endele(name):
-		global edit, editdata
+		nonlocal edit, editdata
 		editdata = editdata.strip()
 		if not edit:
 			debug_prt('XML: chardata belongs to no edit element: {}', repr(editdata))
@@ -271,7 +276,7 @@ def configparse(path, ignore_missing = True):
 		edit = list()
 		editdata = ''
 	def configparse_chardata(data):
-		global editdata
+		nonlocal editdata
 		editdata = editdata + data
 	p.StartElementHandler = configparse_startele
 	p.EndElementHandler = configparse_endele
@@ -281,23 +286,29 @@ def configparse(path, ignore_missing = True):
 			path = sys.stdin
 		else:
 			path = open(path, 'rb')
-		p.ParseFile(path)
+		xmldata = path.read()
 	except IOError as err:
 		if not ignore_missing:
 			raise err
-		success = False
-		debug_prt('I met an IOError: {}', err)
+		debug_prt('configparse(): I met an IOError: {}', err)
+	else:
+		p.Parse(xmldata)
+		success = True
 	return success
 
 def editconf(parent, key, new, mode):
 	new = eval(new)
-	if 'append' == mode:
-		if isinstance(parent[key], list) and isinstance(new, list):
+	if isinstance(parent[key], list) and isinstance(new, list):
+		if 'append' == mode:
 			parent[key].extend(new)
 			return
-		elif isinstance(orig, dict) and isinstance(new, dict):
-			parent[key].update(new)
+		if 'prepend' == mode:
+			parent[key] = new + parent[key]
 			return
+	elif isinstance(parent[key], dict) and isinstance(new, dict) \
+			and mode in { 'append', 'prepend' }:
+		parent[key].update(new)
+		return
 	parent[key] = new
 
 def create_target(key, name):
@@ -314,37 +325,46 @@ def create_strlst(key, name):
 
 # XML config generator
 def genconf(output, full = False):
-	import xml.etree.ElementTree as etree
-	from xml.dom import minidom
+	try:
+		from lxml import etree
+	except ImportError:
+		debug_prt('Cannot import lxml. Falling back to cElementTree.')
+		import xml.etree.cElementTree as etree
+
+	def genele(parent, name, attrs, item):
+		ele = etree.SubElement(parent, name, attrs)
+		if 'lxml' in sys.modules:
+			ele.text = etree.CDATA(repr(item))
+		else:
+			ele.text = repr(item)
+
 	root = etree.Element('root')
-	if not full:
-		for i in { 'debug', 'debugpathbase' }:
-			ele = etree.SubElement(root, 'config', dict(name = i))
-			ele.text = repr(config[i])
-		for i in config['target']:
-			for j in { 'username', 'password' }:
-				ele = etree.SubElement(root, 'target', dict(key = i, name = j))
-				ele.text = repr(config['target'][i][j])
+	if full:
+		config_items = set(config.keys()).difference({ 'target', 'strlst', 'conffile', 'envprefix' })
 	else:
-		for i in config:
-			if i in { 'target', 'strlst', 'conffile', 'envprefix' }:
-				continue
-			ele = etree.SubElement(root, 'config', dict(name = i))
-			ele.text = repr(config[i])
+		config_items = { 'debug', 'cmdqueuing' }
+	for i in config_items:
+		genele(root, 'config', dict(name = i), config[i])
+	if full:
 		for i in config['target']:
 			for j in config['target'][i]:
-				ele = etree.SubElement(root, 'target', dict(key = i, name = j))
-				ele.text = repr(config['target'][i][j])
+				genele(root, 'target', dict(key = i, name = j), config['target'][i][j])
 		for i in config['strlst']:
-			ele = etree.SubElement(root, 'strlst', dict(key = i))
-			ele.text = repr(getosstr(config['strlst'][i]))
-	xmldom = minidom.parseString(etree.tostring(root, 'utf-8'))
+			genele(root, 'strlst', dict(key = i), getosstr(config['strlst'][i]))
+	else:
+		for i in config['target']:
+			for j in { 'enable', 'username', 'password' }:
+				genele(root, 'target', dict(key = i, name = j), config['target'][i][j])
+	if 'lxml' in sys.modules:
+		xmlstr = etree.tostring(root, encoding = 'utf-8', xml_declaration = True, pretty_print = True).decode('utf-8')
+	else:
+		from xml.dom import minidom
+		xmlstr = minidom.parseString(etree.tostring(root, 'utf-8')).toprettyxml()
 	if '-' == output:
-		f = sys.stdout
-		f.write(xmldom.toprettyxml())
+		sys.stdout.write(xmlstr)
 	else:
 		f = open(output, 'w', encoding = 'utf-8')
-		f.write(xmldom.toprettyxml())
+		f.write(xmlstr)
 		f.close()
 
 # Functions
@@ -379,6 +399,7 @@ def request(url, encoding, data = None):
 	except Exception as err:
 		prtmsg('err_req', type = err.__class__, errmsg = err, url = url)
 		return None
+	debug_file(re.sub('[^a-zA-Z0-9_]', '_', re.sub('^http://', '', url, 1)), resp)
 	return resp;
 
 def newpostscheck(key):
@@ -390,7 +411,6 @@ def newpostscheck(key):
 			prtmsg('err_fail', key)
 			retry -= 1
 			continue
-		debug_file('{}{}.html'.format(config['debugpathbase'], key), resp)
 		if config['target'][key].get('regex_logout'):
 			match = re.search(config['target'][key]['regex_logout'], resp)
 			if match:
@@ -448,7 +468,6 @@ def friendlyredir(key, oriresp):
 				prtmsg('err_friendlyreedir_fail', key)
 				retry -= 1
 				continue
-			debug_file('{}{}_friendlyredir.html'.format(config['debugpathbase'], key), resp)
 			break
 		if not retry:
 			prtmsg('err_friendlyredir_tmretries')
@@ -463,7 +482,6 @@ def login(key, resp):
 		prtmsg('msg_login_fail')
 		return
 	prtmsg('msg_loggedin', key)
-	debug_file('{}{}_login.html'.format(config['debugpathbase'], key), resp)
 	if config['cookiefilepath']:
 		cookies.save(config['cookiefilepath'])
 
@@ -536,9 +554,15 @@ def lstargets():
 
 def debug_file(path, content):
 	if config['debug']:
-		f = open(path, 'wb')
-		f.write(content.encode('utf-8'))
-		f.close()
+		for i in config['debugpathbase']:
+			try:
+				f = open(i + path, 'wb')
+				f.write(content.encode('utf-8'))
+				break
+			except IOError as err:
+				debug_prt('debug_file(): IOError: {}', str(err))
+			f.close()
+
 
 def prtmsg(strindex, *arg, **kwargs):
 	print(config['strlst'][strindex].format(*arg, **kwargs), end = '')
@@ -572,9 +596,9 @@ args = list(sys.argv)
 del args[0]
 if config['envprefix'] + 'OPTIONS' in os.environ:
 	debug_prt('Env _OPTIONS: {}', repr(os.environ[config['envprefix'] + 'OPTIONS'].split()))
-	args = args + os.environ[config['envprefix'] + 'OPTIONS'].split()
+	args = args + shlex.split(os.environ[config['envprefix'] + 'OPTIONS'], True, (True if 'posix' == os.name else False))
 parser = argparse.ArgumentParser(description='Checks for new posts in various forums')
-parser.add_argument('conf', help = "path to the configuration file (\"-\" for stdin)", nargs = '?', metavar = 'CONFIGURATION_FILE')
+parser.add_argument('conf', help = "path to the configuration file (\"-\" for stdin)", metavar = 'CONFIGURATION_FILE', nargs = '*')
 parser.add_argument('-d', '--debug', help = "enable debug mode", action = 'store_true')
 parser.add_argument('-D', '--no-debug', help = "disable debug mode", action = 'store_true')
 parser.add_argument('-e', '--enable', help = "enable a target", metavar = 'TARGET', nargs = '+')
