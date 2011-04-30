@@ -223,6 +223,9 @@ def configparse(path, ignore_missing = True):
 	if os.path.isdir(path):
 		debug_prt('configparse: Directory recursion: {}', path)
 		for root, dirs, files in os.walk(path):
+			files.sort()
+			dirs.sort()
+			debug_prt('os.walk(): {}, {}', dirs, files)
 			for name in files:
 				if name.endswith('.xml'):
 					configparse(os.path.join(root, name))
@@ -283,10 +286,11 @@ def configparse(path, ignore_missing = True):
 	p.CharacterDataHandler = configparse_chardata
 	try:
 		if '-' == path:
-			path = sys.stdin
+			xmldata = sys.stdin.read()
 		else:
-			path = open(path, 'rb')
-		xmldata = path.read()
+			f = open(path, 'rb')
+			xmldata = f.read()
+			f.close()
 	except IOError as err:
 		if not ignore_missing:
 			raise err
@@ -341,16 +345,18 @@ def genconf(output, full = False):
 	root = etree.Element('root')
 	if full:
 		config_items = set(config.keys()).difference({ 'target', 'strlst', 'conffile', 'envprefix' })
+		strlst_items = config['strlst'].keys()
 	else:
-		config_items = { 'debug', 'cmdqueuing' }
+		config_items = { 'debug', 'cmdqueuing', 'interval' }
+		strlst_items = { 'msg_newpost', 'cmd_newpost', 'cmd_err' }
 	for i in config_items:
 		genele(root, 'config', dict(name = i), config[i])
+	for i in strlst_items:
+		genele(root, 'strlst', dict(key = i), getosstr(config['strlst'][i]))
 	if full:
 		for i in config['target']:
 			for j in config['target'][i]:
 				genele(root, 'target', dict(key = i, name = j), config['target'][i][j])
-		for i in config['strlst']:
-			genele(root, 'strlst', dict(key = i), getosstr(config['strlst'][i]))
 	else:
 		for i in config['target']:
 			for j in { 'enable', 'username', 'password' }:
@@ -554,14 +560,19 @@ def lstargets():
 
 def debug_file(path, content):
 	if config['debug']:
+		f = None
 		for i in config['debugpathbase']:
 			try:
-				f = open(i + path, 'wb')
+				f = open(i + path + '.html', 'wb')
 				f.write(content.encode('utf-8'))
 				break
 			except IOError as err:
 				debug_prt('debug_file(): IOError: {}', str(err))
-			f.close()
+			finally:
+				try:
+					f.close()
+				except AttributeError:
+					pass
 
 
 def prtmsg(strindex, *arg, **kwargs):
@@ -597,8 +608,8 @@ del args[0]
 if config['envprefix'] + 'OPTIONS' in os.environ:
 	debug_prt('Env _OPTIONS: {}', repr(os.environ[config['envprefix'] + 'OPTIONS'].split()))
 	args = args + shlex.split(os.environ[config['envprefix'] + 'OPTIONS'], True, (True if 'posix' == os.name else False))
-parser = argparse.ArgumentParser(description='Checks for new posts in various forums')
-parser.add_argument('conf', help = "path to the configuration file (\"-\" for stdin)", metavar = 'CONFIGURATION_FILE', nargs = '*')
+parser = argparse.ArgumentParser(description='A Python script that checks for new posts in various forums')
+parser.add_argument('conf', help = "path to the configuration file(s) (\"-\" for stdin)", metavar = 'CONFIGURATION_FILE', nargs = '*')
 parser.add_argument('-d', '--debug', help = "enable debug mode", action = 'store_true')
 parser.add_argument('-D', '--no-debug', help = "disable debug mode", action = 'store_true')
 parser.add_argument('-e', '--enable', help = "enable a target", metavar = 'TARGET', nargs = '+')
@@ -606,7 +617,7 @@ parser.add_argument('-E', '--disable', help = "disable a target", metavar = 'TAR
 parser.add_argument('-o', '--only', help = "keep only a target enabled", metavar = 'TARGET')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-g', '--genconf', help = "generate a basic configuration file (\"-\" for stdout) and quit", metavar = 'FILE')
-group.add_argument('-G', '--genfullconf', help = "generate a configuration file containing all the configuration settings (\"-\" for stdout) and quit", metavar = 'FILE')
+group.add_argument('-G', '--genfullconf', help = "generate a configuration file containing all the possible settings (\"-\" for stdout) and quit", metavar = 'FILE')
 group.add_argument('-s', '--list-targets', help = "list supported target sites", action = 'store_true')
 parsed_args = parser.parse_args(args)
 if parsed_args.debug:
