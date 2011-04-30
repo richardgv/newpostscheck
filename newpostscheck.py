@@ -616,8 +616,8 @@ parser.add_argument('-e', '--enable', help = "enable a target", metavar = 'TARGE
 parser.add_argument('-E', '--disable', help = "disable a target", metavar = 'TARGET', nargs = '+')
 parser.add_argument('-o', '--only', help = "keep only a target enabled", metavar = 'TARGET')
 group = parser.add_mutually_exclusive_group()
-group.add_argument('-g', '--genconf', help = "generate a basic configuration file (\"-\" for stdout) and quit", metavar = 'FILE')
-group.add_argument('-G', '--genfullconf', help = "generate a configuration file containing all the possible settings (\"-\" for stdout) and quit", metavar = 'FILE')
+group.add_argument('-g', '--genconf', help = "generate a basic configuration file (\"-\" for stdout, default) and quit", metavar = 'FILE', nargs = '?', default = argparse.SUPPRESS)
+group.add_argument('-G', '--genfullconf', help = "generate a configuration file containing all the possible settings (\"-\" for stdout, default) and quit", metavar = 'FILE', nargs = '?', default = argparse.SUPPRESS)
 group.add_argument('-s', '--list-targets', help = "list supported target sites", action = 'store_true')
 parsed_args = parser.parse_args(args)
 if parsed_args.debug:
@@ -651,11 +651,11 @@ if parsed_args.disable:
 		if i not in config['target']:
 			raise Exception('Target specified with --disable not found.')
 		config['target'][i]['enable'] = False
-if parsed_args.genconf:
-	genconf(parsed_args.genconf, False)
+if 'genconf' in parsed_args:
+	genconf((parsed_args.genconf if None != parsed_args.genconf else '-'), False)
 	exit()
-elif parsed_args.genfullconf:
-	genconf(parsed_args.genfullconf, True)
+elif 'genfullconf' in parsed_args:
+	genconf((parsed_args.genfullconf if None != parsed_args.genfullconf else '-'), True)
 	exit()
 elif parsed_args.list_targets:
 	lstargets()
