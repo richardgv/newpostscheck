@@ -1,0 +1,102 @@
+newspostscheck README
+====================
+Richard Grenville
+April 2011
+
+newpostscheck -- an ugly name but it's what it currently is called -- is a Python script that
+checks for new posts in various forums.
+
+Requirements
+-----------
+Python 3.2+ and optionally lxml library. It's supposed to work on any platform upon which Python
+runs.
+
+Quick start
+-----------
+
+---------------------------------------------------------------------------------------------------
+$ wget -O newpostscheck.py https://github.com/richardgv/newpostscheck/raw/master/newpostscheck.py
+# View the list of supported target sites
+$ python3.2 newpostscheck.py -s
+# TARGET is the target site you wish to enable
+$ python3.2 newpostscheck.py -o TARGET -g newpostscheck.xml
+# Edit the generated configuration file to add things like username and password
+$ vi newpostscheck.py
+$ python3.2 newpostscheck
+---------------------------------------------------------------------------------------------------
+
+Command-line arguments
+----------------------
+Please refer to the output of
+
+  $ python3.2 newpostcheck.py --help
+
+Configurations
+--------------
+The script stores its default settings in the code, and optionally parses external XML configuration
+files. By default (at the time of writing) it parses:
+
+- +/etc/newpostscheck.xml+
+- +~/.newpostscheck.xml+
+- +./newpostscheck.xml+
+
+The format of the configuration file is:
+
+---------------------------------------------------------------------------------------------------
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <config name="NAME" mode="assign"></config>
+  <target name="NAME" key="KEY" mode="assign"></target>
+  <strlst key="KEY" name="NAME" mode="assign"></strlst>
+  <include ignore_missing="True"></include>
+</root>
+---------------------------------------------------------------------------------------------------
+
+Content of all configuration XML elements (except `<include>`) are processed with `eval()`,
+therefore they should be written in Python expression syntax.
+If a `mode` is `prepend` or `append`, and the corresponding configuration entry is Python `dict`, the
+content of the XML element is added to the `dict` variable; if the entry is Python `list`, the
+content is appended/prepended respectively.
+
+- `<config name="NAME">` entries modify main configuration entry `NAME`. The possible
+  configuration entries are listed and explained in the source code.
+- `<target name="NAME" key="KEY">` entries modifies the list of target sites the script supports,
+  adding/modifying the `NAME` property of the `KEY` target site. If the `KEY` target is not present
+  it's automatically created. The possible configuration entries are listed in the source code and
+  the names should be mostly self-explainary.
+  
+  * `enable` is a `bool` value indicating if the target is enabled
+  * `username` and `password` are the username and password for the site
+- `<strlst name="NAME" name="KEY">` entries modifies the list of strings that the script use. It
+  modifies the `KEY` string, for the `NAME` platform. `NAME` is the current platform if the
+  `name` attribute is omitted.
+  +
+  The configurable string entries are listed in the source code. Each entry is a Python `dict`, and
+  each key is the platform name the item applies to (with the format of `os.name`). If no item
+  corresponding to the current platform is found, the script uses the item with the key `default`.
+  +
+  There are 3 types of strings: flags, messages, and command lists:
+  * Flags are the Python `dict` items with the key beginning with `"f"`. They are the templates
+    applying to other string entries.
+  * Command lists have keys beginning with `cmd_`, stored in Python `list`.
+    ** `cmd_newpost` is a list of the commands executed when a new post is discovered. Some
+    replacement fields are:
+       *** `{title}`
+       *** `{author}`
+       *** `{url}`
+       *** If running on a POSIX system, every replacement field has a variant escaped with shell
+       syntax, e.g
+           `{title_esc}`
+    ** `cmd_err` is a list of the commands executed when a target site cannot be checked due to some
+       errors.
+  * All other strings are messages, printed by the script on stdout. `msg_newpost` is the message
+    printed when a new post is discovered, and it has the same replacement fields as `cmd_newpost`
+    does, without shell-syntax escape.
+- `<include ignore_missing="True">` entries let the script parses additional configuration files. If
+  a directory path is specified, all the files ending with `.xml` in the directory are parsed in
+  alphabetical (ASCII) order. If `ignore_missing` is `False` an error would be thrown out if the
+  script meet troubles when reading the file.
+
+`-g` commandline argument generates a configuration file containing the basic configurations, and
+`-G` generates a full configuration file. If lxml is present it uses lxml to generate the XML file,
+otherwise cElementTree.
