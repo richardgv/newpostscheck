@@ -183,12 +183,11 @@ config['strlst'] = dict(
 		err_tmretries = dict(default = 'Oh, too many retries. Skipping it.'),
 		err_no_friendlyredir_target = dict(default = 'No friendly redirection target found.'),
 		err_friendlyredir_fail = dict(default = 'I met an error when trying to handling friendly redirection of {}. Retrying...'),
-		err_friendlyredir_tmretries = dict(default = 'Oh, too many retries when handling friendly redirection. Skipping it.'),
 		err_login_fail = dict(default = 'I met an error when trying to login to {}. Retrying...'),
 		err_login_sessionstr = dict(default = 'Login session string not found.'),
 		err_io = dict(default = 'I met an IOError {}.'),
-		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc} {title_esc}\ by\ {author_esc}', 'mplayer -really-quiet /usr/share/sounds/purple/receive.wav'], default = ()), 
-		cmd_err = dict(posix = ['notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = ()), 
+		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc} {title_esc}\ by\ {author_esc}', 'mplayer -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
+		cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []), 
 		)
 
 def getosstr(tb):
@@ -328,7 +327,7 @@ def create_strlst(key, name):
 		config['strlst'][key][name] = config['strlst'][key].get('default', [ list() if name.startswith('cmd_') else '' ])
 
 # XML config generator
-def genconf(output, full = False):
+def genconf(output, full = False, separate = False):
 	try:
 		from lxml import etree
 	except ImportError:
@@ -338,9 +337,23 @@ def genconf(output, full = False):
 	def genele(parent, name, attrs, item):
 		ele = etree.SubElement(parent, name, attrs)
 		if 'lxml' in sys.modules:
-			ele.text = etree.CDATA(repr(item))
+			ele.text = (etree.CDATA(repr(item)) if not isinstance(item, bool) else repr(item))
 		else:
 			ele.text = repr(item)
+	
+	def writetree(root, output, sub = ''):
+		if 'lxml' in sys.modules:
+			xmlstr = etree.tostring(root, encoding = 'utf-8', xml_declaration = True, pretty_print = True).decode('utf-8')
+		else:
+			from xml.dom import minidom
+			xmlstr = minidom.parseString(etree.tostring(root, 'utf-8')).toprettyxml()
+		if '-' == output:
+			sys.stdout.write(('\n' + sub + ':\n' if sub else '') + xmlstr)
+		else:
+			f = open(output + sub, 'w', encoding = 'utf-8')
+			f.write(xmlstr)
+			f.close()
+		root.clear()
 
 	root = etree.Element('root')
 	if full:
@@ -351,27 +364,19 @@ def genconf(output, full = False):
 		strlst_items = { 'msg_newpost', 'cmd_newpost', 'cmd_err' }
 	for i in config_items:
 		genele(root, 'config', dict(name = i), config[i])
+	if separate:
+		writetree(root, output, '10-config.xml')
 	for i in strlst_items:
 		genele(root, 'strlst', dict(key = i), getosstr(config['strlst'][i]))
-	if full:
-		for i in config['target']:
-			for j in config['target'][i]:
-				genele(root, 'target', dict(key = i, name = j), config['target'][i][j])
-	else:
-		for i in config['target']:
-			for j in { 'enable', 'username', 'password' }:
-				genele(root, 'target', dict(key = i, name = j), config['target'][i][j])
-	if 'lxml' in sys.modules:
-		xmlstr = etree.tostring(root, encoding = 'utf-8', xml_declaration = True, pretty_print = True).decode('utf-8')
-	else:
-		from xml.dom import minidom
-		xmlstr = minidom.parseString(etree.tostring(root, 'utf-8')).toprettyxml()
-	if '-' == output:
-		sys.stdout.write(xmlstr)
-	else:
-		f = open(output, 'w', encoding = 'utf-8')
-		f.write(xmlstr)
-		f.close()
+	if separate:
+		writetree(root, output, '20-strlst.xml')
+	for i in config['target']:
+		for j in (config['target'][i] if full else { 'enable', 'username', 'password' }):
+			genele(root, 'target', dict(key = i, name = j), config['target'][i][j])
+		if separate:
+			writetree(root, output, '30-' + i + '.xml')
+	if not separate:
+		writetree(root, output)
 
 # Functions
 def unescape(s):
@@ -422,7 +427,6 @@ def newpostscheck(key):
 			if match:
 				prtmsg('msg_login', key)
 				if config['target'][key].get('username') and config['target'][key].get('password'):
-					prtmsg('msg_retry', key)
 					login(key, resp)
 				else:
 					prtmsg('err_noaccount', key)
@@ -430,14 +434,16 @@ def newpostscheck(key):
 					break
 				retry -= 1
 				continue
-		break
+		resp = friendlyredir(key, resp)
+		if resp:
+			break
+		retry -= 1
 	if not retry:
 		prtmsg('err_tmretries', key)
 		cmdqueue_add('cmd_err', site = key)
+		if not config['cmdqueuing']:
+			cmdquee_proc()
 		return None
-	resp = friendlyredir(key, resp)
-	if not resp:
-		return
 	if config['target'][key].get('regex_empty'):
 		match = re.search(config['target'][key]['regex_empty'], resp)
 		if match:
@@ -468,16 +474,9 @@ def friendlyredir(key, oriresp):
 			return
 		match = config['target'][key]['base'] + unescape(getregexdef(match, key, 'friendlyredir'))
 		retry = config['maxretry']
-		while retry:
-			resp = request(match, config['target'][key]['encoding'])
-			if not resp:
-				prtmsg('err_friendlyreedir_fail', key)
-				retry -= 1
-				continue
-			break
-		if not retry:
-			prtmsg('err_friendlyredir_tmretries')
-			return
+		resp = request(match, config['target'][key]['encoding'])
+		if not resp:
+			prtmsg('err_friendlyredir_fail', key)
 		return resp
 	else:
 		return oriresp
@@ -605,7 +604,7 @@ class httphandler(urllib.request.HTTPHandler):
 # Argument parser
 args = list(sys.argv)
 del args[0]
-if config['envprefix'] + 'OPTIONS' in os.environ:
+if config['envprefix'] and config['envprefix'] + 'OPTIONS' in os.environ:
 	debug_prt('Env _OPTIONS: {}', repr(os.environ[config['envprefix'] + 'OPTIONS'].split()))
 	args = args + shlex.split(os.environ[config['envprefix'] + 'OPTIONS'], True, (True if 'posix' == os.name else False))
 parser = argparse.ArgumentParser(description='A Python script that checks for new posts in various forums')
@@ -615,10 +614,11 @@ parser.add_argument('-D', '--no-debug', help = "disable debug mode", action = 's
 parser.add_argument('-e', '--enable', help = "enable a target", metavar = 'TARGET', nargs = '+')
 parser.add_argument('-E', '--disable', help = "disable a target", metavar = 'TARGET', nargs = '+')
 parser.add_argument('-o', '--only', help = "keep only a target enabled", metavar = 'TARGET')
+parser.add_argument('-s', '--separate', help = "split the generated configuration file", action = 'store_true')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-g', '--genconf', help = "generate a basic configuration file (\"-\" for stdout, default) and quit", metavar = 'FILE', nargs = '?', default = argparse.SUPPRESS)
 group.add_argument('-G', '--genfullconf', help = "generate a configuration file containing all the possible settings (\"-\" for stdout, default) and quit", metavar = 'FILE', nargs = '?', default = argparse.SUPPRESS)
-group.add_argument('-s', '--list-targets', help = "list supported target sites", action = 'store_true')
+group.add_argument('-l', '--list-targets', help = "list supported target sites", action = 'store_true')
 parsed_args = parser.parse_args(args)
 if parsed_args.debug:
 	config['debug'] = True
@@ -652,10 +652,10 @@ if parsed_args.disable:
 			raise Exception('Target specified with --disable not found.')
 		config['target'][i]['enable'] = False
 if 'genconf' in parsed_args:
-	genconf((parsed_args.genconf if None != parsed_args.genconf else '-'), False)
+	genconf((parsed_args.genconf if None != parsed_args.genconf else '-'), False, parsed_args.separate)
 	exit()
 elif 'genfullconf' in parsed_args:
-	genconf((parsed_args.genfullconf if None != parsed_args.genfullconf else '-'), True)
+	genconf((parsed_args.genfullconf if None != parsed_args.genfullconf else '-'), True, parsed_args.separate)
 	exit()
 elif parsed_args.list_targets:
 	lstargets()

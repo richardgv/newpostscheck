@@ -2,3 +2,7 @@
 ####################
 *~
 .*.swp
+
+# Asciidoc HTML files #
+#######################
+README.html

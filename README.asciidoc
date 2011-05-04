@@ -1,7 +1,7 @@
 newspostscheck README
 ====================
 Richard Grenville
-April 2011
+May 2011
 
 newpostscheck -- an ugly name but it's what it currently is called -- is a Python script that
 checks for new posts in various forums.
@@ -17,7 +17,7 @@ Quick start
 ---------------------------------------------------------------------------------------------------
 $ wget -O newpostscheck.py https://github.com/richardgv/newpostscheck/raw/master/newpostscheck.py
 # View the list of supported target sites
-$ python3.2 newpostscheck.py -s
+$ python3.2 newpostscheck.py -l
 # TARGET is the target site you wish to enable
 $ python3.2 newpostscheck.py -o TARGET -g newpostscheck.xml
 # Edit the generated configuration file to add things like username and password
@@ -98,5 +98,12 @@ content is appended/prepended respectively.
   script meet troubles when reading the file.
 
 `-g` commandline argument generates a configuration file containing the basic configurations, and
-`-G` generates a full configuration file. If lxml is present it uses lxml to generate the XML file,
+`-G` generates a full configuration file. `-s` splits the output of `-g`/`-G` to `10-config.xml`,
+`20-strlst.xml`, `30-TARGET.xml` and such. If lxml is present it uses lxml to generate the XML file,
 otherwise cElementTree.
+
+.Adding more target sites
+You may add more supported sites to the script by using `<target name="NAME" key="KEY">` in the
+configuration file. `niftyhost`, `xdwebhosting`, and `serial_experience` can be used as templates
+for MyBB forums; `zemhost` as a template for vBulletin 4 forums; `kottnet` as a template for SMF
+forums; `fvwmforums` as a template for phpBB3 forums.
