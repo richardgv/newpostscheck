@@ -61,7 +61,7 @@ config['target'] = dict(
 		encoding = 'utf-8', 
 		loginurl = 'http://www.niftyhost.us/support/member.php', 
 		base = 'http://www.niftyhost.us/support/', 
-		regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->', 
+		regex_newpost = r'<a href="[^>]+><img[^>]+?alt="Go to first unread post"(.|\n)+?</tr>', 
 		regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>', 
 		regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>', 
 		regex_post_url = r'<a href="(.+?)"><img src="', 
@@ -150,7 +150,7 @@ config['target'] = dict(
 		regex_post_title = r'class="topictitle">(.+?)</a>', 
 		regex_post_author = r'by <a href=".+?">(.+?)</a>\n', 
 		regex_post_url = r'<a href="./(.+?)"><img src="./styles/prosilver/imageset/icon_topic_newest.gif"', 
-		regex_empty = r'<p>No suitable matches were found.</p>'), 
+		regex_empty = r'<strong>No suitable matches were found.</strong>'), 
 		
 		ucweb = dict(
 		enable = False, 
@@ -166,8 +166,9 @@ config['target'] = dict(
 		)
 config['strlst'] = dict(
 		fdbg = dict(posix = '\033[32mDEBUG: {}\033[0m\n', default = 'DEBUG: {}\n'), 
-		ferr = dict(posix = '\033[41m{}\033[0m\n', default = '{}\n'),
+		ferr = dict(posix = '\033[41m{}\033[0m', default = '{}'),
 		msg_newpost = dict(posix = '\033[1;32mA new post in {site}: {title} by {author}\033[0m:\n{url}\n', default = 'A new post in {site}: {title} by {author}:\n{url}\n'), 
+		msg_nonewpost = dict(default = 'No new posts found in {site}.\n'), 
 		msg_check = dict(default = 'Checking {}...\n', ),
 		msg_next = dict(default = 'Next check: {} seconds later\n', ),
 		msg_interval = dict(posix = '\r\033[1G\033[K{} seconds left', default = '\r{} seconds left'),
@@ -176,16 +177,16 @@ config['strlst'] = dict(
 		msg_loggedin = dict(default = 'Logged in to {}.\n'),
 		msg_retry = dict(default = 'Retrying...\n'),
 		msg_friendlyredir = dict(default = '\"Friendly\" redirection... I hate this.\n'),
-		err_req = dict(default = '{type}: {errmsg} when visiting {url}'),
-		err_opendns = dict(default = 'Meh, we met a DNS problem -- and you are a lovely OpenDNS user.'),
-		err_fail = dict(default = 'I met an error when trying to access {}. Retrying...'),
-		err_noaccount = dict(default = 'And I cannot find your username or password, either.'),
-		err_tmretries = dict(default = 'Oh, too many retries. Skipping it.'),
-		err_no_friendlyredir_target = dict(default = 'No friendly redirection target found.'),
-		err_friendlyredir_fail = dict(default = 'I met an error when trying to handling friendly redirection of {}. Retrying...'),
-		err_login_fail = dict(default = 'I met an error when trying to login to {}. Retrying...'),
-		err_login_sessionstr = dict(default = 'Login session string not found.'),
-		err_io = dict(default = 'I met an IOError {}.'),
+		err_req = dict(default = '{type}: {errmsg} when visiting {url}\n', flag_err = True),
+		err_opendns = dict(default = 'Meh, we met a DNS problem -- and you are a lovely OpenDNS user.\n', flag_err = True),
+		err_fail = dict(default = 'I met an error when trying to access {}. Retrying...\n', flag_err = True),
+		err_noaccount = dict(default = 'And I cannot find your username or password, either.\n', flag_err = True),
+		err_tmretries = dict(default = 'Oh, too many retries. Skipping it.\n', flag_err = True),
+		err_no_friendlyredir_target = dict(default = 'No friendly redirection target found.\n', flag_err = True),
+		err_friendlyredir_fail = dict(default = 'I met an error when trying to handling friendly redirection of {}. Retrying...\n', flag_err = True),
+		err_login_fail = dict(default = 'I met an error when trying to login to {}. Retrying...\n', flag_err = True),
+		err_login_sessionstr = dict(default = 'Login session string not found.\n', flag_err = True),
+		err_io = dict(default = 'I met an IOError {}\n.', flag_err = True),
 		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc} {title_esc}\ by\ {author_esc}', 'mplayer -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
 		cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []), 
 		)
@@ -444,13 +445,12 @@ def newpostscheck(key):
 		if not config['cmdqueuing']:
 			cmdquee_proc()
 		return None
-	if config['target'][key].get('regex_empty'):
-		match = re.search(config['target'][key]['regex_empty'], resp)
-		if match:
-			debug_prt('regex_empty matched.')
-			return dict()
-	if 'regex_newpost' in config['target'][key] and config['target'][key]['regex_newpost']:
+	found = False
+	if config['target'][key].get('regex_empty') and re.search(config['target'][key]['regex_empty'], resp):
+		debug_prt('regex_empty matched.')
+	elif 'regex_newpost' in config['target'][key] and config['target'][key]['regex_newpost']:
 		for match in re.finditer(config['target'][key]['regex_newpost'], resp):
+			found = True
 			match = match.group(config['target'][key].get('regex_newpost_group', 0))
 			info = dict()
 			for i in config['target'][key]:
@@ -464,6 +464,8 @@ def newpostscheck(key):
 			cmdqueue_add('cmd_newpost', site = key, **info)
 			if not config['cmdqueuing']:
 				cmdquee_proc()
+	if not found:
+		prtmsg('msg_nonewpost', site = key)
 
 def friendlyredir(key, oriresp):
 	if config['target'][key].get('regex_friendlyredir'):
@@ -512,7 +514,7 @@ def cmdqueue_add(cmdindex, *arg, **kwargs):
 	if 'pipes' in sys.modules:
 		for key in set(kwargs.keys()):
 			kwargs[key + "_esc"] = pipes.quote(kwargs[key])
-	for cmd in config['strlst'][cmdindex]:
+	for cmd in config['strlst'][cmdindex]['cur']:
 		cmdqueue.append(cmd.format(*arg, **kwargs))
 
 def cmdqueue_proc():
@@ -528,26 +530,23 @@ def genstrlst():
 	"""Generate platform-specific string list"""
 	global fdbg, config
 	flags = set()
+	for strindex in { i for i in config['strlst'].keys() if i.startswith('f') } :
+		flags.add(strindex[1:])
+		config['strlst'][strindex] = getosstr(config['strlst'][strindex])
 	for strindex in config['strlst']:
-		if strindex.startswith('f'):
-			flags.add(strindex[1:])
-			config['strlst'][strindex] = getosstr(config['strlst'][strindex])
-	for strindex in config['strlst']:
-		flag = set()
 		if strindex.startswith('f'):
 			continue
+		flag = set()
 		string = getosstr(config['strlst'][strindex])
 		for i in flags:
-			if strindex.startswith(i + '_'):
+			if config['strlst'][strindex].get('flag_' + i, False):
 				flag.add(i)
-			if 'flag_' + i in config['strlst'][strindex]:
-				if config['strlst'][strindex]['flag_' + i]:
-					flag.add(i)
-				else:
-					flag.discard(i)
 		for i in flag:
 			string = config['strlst']['f' + i].format(string)
-		config['strlst'][strindex] = string
+		for i in frozenset(config['strlst'][strindex]):
+			if i not in { 'file' }:
+				del config['strlst'][strindex][i]
+		config['strlst'][strindex]['cur'] = string
 	fdbg = config['strlst']['fdbg']
 
 def lstargets():
@@ -575,7 +574,14 @@ def debug_file(path, content):
 
 
 def prtmsg(strindex, *arg, **kwargs):
-	print(config['strlst'][strindex].format(*arg, **kwargs), end = '')
+	outputlst = config['strlst'][strindex].get('file', [ sys.stdout ])
+	for output in outputlst:
+		if isinstance(output, str):
+			output = open(os.path.expanduser(output), 'a', encoding = 'utf-8')
+			print(config['strlst'][strindex]['cur'].format(*arg, **kwargs), end = '', file = output)
+			output.close()
+		else:
+			print(config['strlst'][strindex]['cur'].format(*arg, **kwargs), end = '', file = output)
 
 def debug_prt(msg, *arg, **kwargs):
 	if config['debug']:
@@ -591,14 +597,15 @@ class httphandler(urllib.request.HTTPHandler):
 				for j in config['headers_host'][i].items():
 					req.add_unredirected_header(*j)
 		if config['dnscache']:
-			if req.host not in dnscacheentries:
-				ip = socket.gethostbyname_ex(req.host)[-1]
-				if not isinstance(ip, str):
-					ip = random.choice(ip)
-				dnscacheentries[req.host] = ip
-				debug_prt('DNS cache (new): {} == {}', req.host, ip)
-			debug_prt('DNS cache: {} == {}', req.host, dnscacheentries[req.host])
-			req.host = dnscacheentries[req.host]
+			if not re.match('^(\d{1,3}\.){3}\d{1,3}$', req.host):
+				if req.host not in dnscacheentries:
+					ip = socket.gethostbyname_ex(req.host)[-1]
+					if not isinstance(ip, str):
+						ip = random.choice(ip)
+					dnscacheentries[req.host] = ip
+					debug_prt('DNS cache (new): {} == {}', req.host, ip)
+				debug_prt('DNS cache: {} == {}', req.host, dnscacheentries[req.host])
+				req.host = dnscacheentries[req.host]
 		return urllib.request.HTTPHandler().http_open(req)
 
 # Argument parser
