@@ -9,7 +9,7 @@
 # This script sucks, I know.
 
 # Modules
-import urllib.request, urllib.parse, os, re, http.cookies, time, hashlib, socket, random, argparse, sys, io, gzip, shlex
+import urllib.request, urllib.parse, os, re, http.cookies, time, hashlib, socket, random, argparse, sys, io, gzip, shlex, html
 from collections import deque
 try:
 	import pipes
@@ -57,7 +57,7 @@ config['target'] = dict(
 		enable = True, 
 		username = '', 
 		password = '', 
-		url = 'http://www.niftyhost.us/support/search.php?action=getnew', 
+		url = 'http://www.niftyhost.us/support/search.php?action=unreads', 
 		encoding = 'utf-8', 
 		loginurl = 'http://www.niftyhost.us/support/member.php', 
 		base = 'http://www.niftyhost.us/support/', 
@@ -103,7 +103,7 @@ config['target'] = dict(
 		regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'), 
 		
 		zemhost = dict(
-		enable = True,
+		enable = False,
 		username = '', 
 		password = '', 
 		url = 'http://www.zemhost.com/forums/search.php?do=getnew&contenttype=vBForum_Post', 
@@ -176,6 +176,7 @@ config['strlst'] = dict(
 		msg_login = dict(default = 'Hmm, I forgot to login to {}?\n'),
 		msg_loggedin = dict(default = 'Logged in to {}.\n'),
 		msg_retry = dict(default = 'Retrying...\n'),
+		msg_interrupt = dict(default = '\n'),
 		msg_friendlyredir = dict(default = '\"Friendly\" redirection... I hate this.\n'),
 		err_req = dict(default = '{type}: {errmsg} when visiting {url}\n', flag_err = True),
 		err_opendns = dict(default = 'Meh, we met a DNS problem -- and you are a lovely OpenDNS user.\n', flag_err = True),
@@ -187,7 +188,7 @@ config['strlst'] = dict(
 		err_login_fail = dict(default = 'I met an error when trying to login to {}. Retrying...\n', flag_err = True),
 		err_login_sessionstr = dict(default = 'Login session string not found.\n', flag_err = True),
 		err_io = dict(default = 'I met an IOError {}\n.', flag_err = True),
-		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc} {title_esc}\ by\ {author_esc}', 'mplayer -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
+		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc_html} {title_esc_html}\ by\ {author_esc_html}', 'mplayer2 -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
 		cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []), 
 		)
 
@@ -513,6 +514,7 @@ def cmdqueue_add(cmdindex, *arg, **kwargs):
 	global cmdqueue
 	if 'pipes' in sys.modules:
 		for key in set(kwargs.keys()):
+			kwargs[key + "_esc_html"] = pipes.quote(html.escape(kwargs[key]))
 			kwargs[key + "_esc"] = pipes.quote(kwargs[key])
 	for cmd in config['strlst'][cmdindex]['cur']:
 		cmdqueue.append(cmd.format(*arg, **kwargs))
@@ -688,8 +690,12 @@ while True:
 	cmdqueue_proc()
 	timer = config['interval']
 	prtmsg('msg_next', timer)
-	while timer:
-		time.sleep(1)
-		timer -= 1
-		prtmsg('msg_interval', timer)
+	try:
+		while timer:
+			time.sleep(1)
+			timer -= 1
+			prtmsg('msg_interval', timer)
+	except KeyboardInterrupt:
+		prtmsg('msg_interrupt')
+		exit()
 	prtmsg('msg_intervalend', timer)
