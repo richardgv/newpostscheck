@@ -44,6 +44,8 @@ config = dict(
 		dnscache = True,
 		# dnscache: Enable command queuing
 		cmdqueuing = True,
+		# cycles: Cycles to run
+	      	cycles = -1,
 		# envprefix: Prefix of environment variables changing the script
 		# configurations dynamically, "" to disable the feature
 	      	envprefix = 'NPC_',
@@ -70,7 +72,7 @@ config['target'] = dict(
 		regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'), 
 		
 		serial_experience = dict(
-		enable = True, 
+		enable = False, 
 		username = '', 
 		password = '', 
 		url = 'http://www.serialexperience.co.cc/search.php?action=unreads', 
@@ -166,9 +168,11 @@ config['target'] = dict(
 		)
 config['strlst'] = dict(
 		fdbg = dict(posix = '\033[32mDEBUG: {}\033[0m\n', default = 'DEBUG: {}\n'), 
-		ferr = dict(posix = '\033[41m{}\033[0m', default = '{}'),
+		ferr = dict(posix = '\033[41m{}\033[0m', default = '{}', file = { sys.stderr }),
 		msg_newpost = dict(posix = '\033[1;32mA new post in {site}: {title} by {author}\033[0m:\n{url}\n', default = 'A new post in {site}: {title} by {author}:\n{url}\n'), 
 		msg_nonewpost = dict(default = 'No new posts found in {site}.\n'), 
+		msg_start = dict(default = 'Starting checking cycle {cycle}...\n', ),
+		msg_fin = dict(default = 'Finished checking cycle {cycle}...\n', ),
 		msg_check = dict(default = 'Checking {}...\n', ),
 		msg_next = dict(default = 'Next check: {} seconds later\n', ),
 		msg_interval = dict(posix = '\r\033[1G\033[K{} seconds left', default = '\r{} seconds left'),
@@ -188,15 +192,19 @@ config['strlst'] = dict(
 		err_login_fail = dict(default = 'I met an error when trying to login to {}. Retrying...\n', flag_err = True),
 		err_login_sessionstr = dict(default = 'Login session string not found.\n', flag_err = True),
 		err_io = dict(default = 'I met an IOError {}\n.', flag_err = True),
+		err_unused_arg = dict(default = '{number} of {name} argument(s) is/are not used.\n', flag_err = True),
 		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc_html} {title_esc_html}\ by\ {author_esc_html}', 'mplayer2 -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
 		cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []), 
+		cmd_fin = dict(default = []), 
 		)
 
 def getosstr(tb):
 	if os.name in tb:
 		return tb[os.name]
-	else:
+	elif 'default' in tb:
 		return tb['default']
+	else:
+		return None
 
 fdbg = getosstr(config['strlst']['fdbg'])
 
@@ -204,21 +212,22 @@ fdbg = getosstr(config['strlst']['fdbg'])
 timer = 0
 dnscacheentries = dict()
 cmdqueue = deque()
+cur_cycle = 0
 
 # XML config parser
-def configparse(path, ignore_missing = True):
+def configparse(path, ignore_missing, debug_enforce):
 	edit = dict()
 	editdata = ''
 	success = False
-	debug_prt('configparse(): Start parsing: {} ({})', path, ignore_missing)
+	debug_prt('configparse(): Start parsing: {} ({}, {})', path, ignore_missing, debug_enforce)
 	if not path:
 		return False
 	if isinstance(path, list):
 		for i in path[:-1]:
-			if configparse(i, True):
+			if configparse(i, True, debug_enforce):
 				success = True
 		if not success:
-			success = configparse(path[-1], ignore_missing)
+			success = configparse(path[-1], ignore_missing, debug_enforce)
 		return success
 	path = os.path.expanduser(path)
 	if os.path.isdir(path):
@@ -229,7 +238,7 @@ def configparse(path, ignore_missing = True):
 			debug_prt('os.walk(): {}, {}', dirs, files)
 			for name in files:
 				if name.endswith('.xml'):
-					configparse(os.path.join(root, name))
+					configparse(os.path.join(root, name), True, debug_enforce)
 		return True
 	import xml.parsers.expat
 	global config
@@ -268,9 +277,10 @@ def configparse(path, ignore_missing = True):
 			return
 		debug_prt('XML: chardata belongs to {}: {}', repr(edit), repr(editdata))
 		if 'include' == edit['type']:
-			configparse(editdata, edit['ignore_missing'])
+			configparse(editdata, edit['ignore_missing'], debug_enforce)
 		elif 'config' == edit['type']:
-			editconf(config, edit['name'], editdata, edit['mode'])
+			if not ('debug' == edit['name'] and debug_enforce):
+				editconf(config, edit['name'], editdata, edit['mode'])
 		elif 'strlst' == edit['type']:
 			create_strlst(edit['key'], edit['name'])
 			editconf(config['strlst'][edit['key']], edit['name'], editdata, edit['mode'])
@@ -301,7 +311,7 @@ def configparse(path, ignore_missing = True):
 		success = True
 	return success
 
-def editconf(parent, key, new, mode):
+def editconf(parent, key, new, mode = 'assign'):
 	new = eval(new)
 	if isinstance(parent[key], list) and isinstance(new, list):
 		if 'append' == mode:
@@ -328,6 +338,34 @@ def create_strlst(key, name):
 	if name not in config['strlst'][key]:
 		config['strlst'][key][name] = config['strlst'][key].get('default', [ list() if name.startswith('cmd_') else '' ])
 
+def srepr(item):
+	if sys.stdin is item:
+		return 'sys.stdin'
+	elif sys.stdout is item:
+		return 'sys.stdout'
+	elif sys.stderr is item:
+		return 'sys.stderr'
+	elif isinstance(item, set):
+		if item:
+			string = '{ '
+			for i in item:
+				string += srepr(i) + ', '
+			string = string[:-2] + ' }'
+			return string
+		else:
+			return 'set()'
+	elif isinstance(item, list):
+		if item:
+			string = '[ '
+			for i in item[:-1]:
+				string += srepr(i) + ', '
+			string += srepr(item[-1]) + ' ]'
+			return string
+		else:
+			return '[]'
+	else:
+		return repr(item)
+
 # XML config generator
 def genconf(output, full = False, separate = False):
 	try:
@@ -339,9 +377,9 @@ def genconf(output, full = False, separate = False):
 	def genele(parent, name, attrs, item):
 		ele = etree.SubElement(parent, name, attrs)
 		if 'lxml' in sys.modules:
-			ele.text = (etree.CDATA(repr(item)) if not isinstance(item, bool) else repr(item))
+			ele.text = (etree.CDATA(srepr(item)) if not (isinstance(item, bool) or isinstance(item, int)) else repr(item))
 		else:
-			ele.text = repr(item)
+			ele.text = srepr(item)
 	
 	def writetree(root, output, sub = ''):
 		if 'lxml' in sys.modules:
@@ -363,13 +401,17 @@ def genconf(output, full = False, separate = False):
 		strlst_items = config['strlst'].keys()
 	else:
 		config_items = { 'debug', 'cmdqueuing', 'interval' }
-		strlst_items = { 'msg_newpost', 'cmd_newpost', 'cmd_err' }
+		strlst_items = { 'msg_newpost', 'msg_nonewpost', 'cmd_newpost', 'cmd_err' }
 	for i in config_items:
 		genele(root, 'config', dict(name = i), config[i])
 	if separate:
 		writetree(root, output, '10-config.xml')
 	for i in strlst_items:
 		genele(root, 'strlst', dict(key = i), getosstr(config['strlst'][i]))
+		for j in { k for k in config['strlst'][i] if k.startswith('flag_') }:
+			genele(root, 'strlst', dict(key = i, name = j), config['strlst'][i][j])
+		if 'file_orig' in config['strlst'][i]:
+			genele(root, 'strlst', dict(key = i, name = 'file'), config['strlst'][i]['file_orig'])
 	if separate:
 		writetree(root, output, '20-strlst.xml')
 	for i in config['target']:
@@ -514,8 +556,8 @@ def cmdqueue_add(cmdindex, *arg, **kwargs):
 	global cmdqueue
 	if 'pipes' in sys.modules:
 		for key in set(kwargs.keys()):
-			kwargs[key + "_esc_html"] = pipes.quote(html.escape(kwargs[key]))
-			kwargs[key + "_esc"] = pipes.quote(kwargs[key])
+			kwargs[key + "_esc_html"] = pipes.quote(html.escape(str(kwargs[key])))
+			kwargs[key + "_esc"] = pipes.quote(str(kwargs[key]))
 	for cmd in config['strlst'][cmdindex]['cur']:
 		cmdqueue.append(cmd.format(*arg, **kwargs))
 
@@ -528,28 +570,37 @@ def cmdqueue_proc():
 def getregexdef(match, key, name):
 	return match.group(config['target'][key].get('regex_' + name + '_group', config['regex_default'][name]))
 
-def genstrlst():
-	"""Generate platform-specific string list"""
+def strlst_gen():
+	'''Generate strings for the current platform'''
 	global fdbg, config
 	flags = set()
-	for strindex in { i for i in config['strlst'].keys() if i.startswith('f') } :
+	for strindex in { i for i in config['strlst'].keys() if i.startswith('f') }:
 		flags.add(strindex[1:])
-		config['strlst'][strindex] = getosstr(config['strlst'][strindex])
+		config['strlst'][strindex]['cur'] = getosstr(config['strlst'][strindex])
 	for strindex in config['strlst']:
 		if strindex.startswith('f'):
 			continue
-		flag = set()
-		string = getosstr(config['strlst'][strindex])
-		for i in flags:
-			if config['strlst'][strindex].get('flag_' + i, False):
-				flag.add(i)
-		for i in flag:
-			string = config['strlst']['f' + i].format(string)
-		for i in frozenset(config['strlst'][strindex]):
-			if i not in { 'file' }:
-				del config['strlst'][strindex][i]
-		config['strlst'][strindex]['cur'] = string
-	fdbg = config['strlst']['fdbg']
+		if strindex.startswith('cmd_'):
+			config['strlst'][strindex]['cur'] = getosstr(config['strlst'][strindex])
+		else:
+			string = getosstr(config['strlst'][strindex])
+			filelst = set()
+			for i in flags & { j[5:] for j in config['strlst'][strindex].keys() if j.startswith('flag_') }:
+				if None != config['strlst']['f' + i]['cur']:
+					string = config['strlst']['f' + i]['cur'].format(string)
+				filelst |= config['strlst']['f' + i]['file']
+			if 'file' in config['strlst'][strindex]:
+				config['strlst'][strindex]['file_orig'] = config['strlst'][strindex]['file']
+			elif filelst:
+				config['strlst'][strindex]['file'] = filelst
+			config['strlst'][strindex]['cur'] = string
+	fdbg = config['strlst']['fdbg']['cur']
+
+def strlst_cleanup():
+	'''Remove unnecessary objects in config['strlst']'''
+	for strindex in config['strlst']:
+		for i in frozenset(config['strlst'][strindex]).difference({ 'file', 'cur' }):
+			del config['strlst'][strindex][i]
 
 def lstargets():
 	prefix = ' '
@@ -576,8 +627,9 @@ def debug_file(path, content):
 
 
 def prtmsg(strindex, *arg, **kwargs):
-	outputlst = config['strlst'][strindex].get('file', [ sys.stdout ])
+	outputlst = config['strlst'][strindex].get('file', { sys.stdout })
 	for output in outputlst:
+		# debug_prt(repr(config['strlst'][strindex]))
 		if isinstance(output, str):
 			output = open(os.path.expanduser(output), 'a', encoding = 'utf-8')
 			print(config['strlst'][strindex]['cur'].format(*arg, **kwargs), end = '', file = output)
@@ -618,31 +670,37 @@ if config['envprefix'] and config['envprefix'] + 'OPTIONS' in os.environ:
 	args = args + shlex.split(os.environ[config['envprefix'] + 'OPTIONS'], True, (True if 'posix' == os.name else False))
 parser = argparse.ArgumentParser(description='A Python script that checks for new posts in various forums')
 parser.add_argument('conf', help = "path to the configuration file(s) (\"-\" for stdin)", metavar = 'CONFIGURATION_FILE', nargs = '*')
+parser.add_argument('-a', '--accountinfo', help = "indicate the account information of a target, the format is TARGET USERNAME PASSWORD TARGET USERNAME PASSWORD ...", nargs = '+')
+parser.add_argument('-c', '--cycles', help = "indicate the cycles of new post checking the script performs, -1 for infinite", metavar = 'CYCLES')
 parser.add_argument('-d', '--debug', help = "enable debug mode", action = 'store_true')
 parser.add_argument('-D', '--no-debug', help = "disable debug mode", action = 'store_true')
 parser.add_argument('-e', '--enable', help = "enable a target", metavar = 'TARGET', nargs = '+')
 parser.add_argument('-E', '--disable', help = "disable a target", metavar = 'TARGET', nargs = '+')
 parser.add_argument('-o', '--only', help = "keep only a target enabled", metavar = 'TARGET')
 parser.add_argument('-s', '--separate', help = "split the generated configuration file", action = 'store_true')
+parser.add_argument('-!', '--no-target', help = "dislabe all targets (for debugging)", action = 'store_true')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-g', '--genconf', help = "generate a basic configuration file (\"-\" for stdout, default) and quit", metavar = 'FILE', nargs = '?', default = argparse.SUPPRESS)
 group.add_argument('-G', '--genfullconf', help = "generate a configuration file containing all the possible settings (\"-\" for stdout, default) and quit", metavar = 'FILE', nargs = '?', default = argparse.SUPPRESS)
 group.add_argument('-l', '--list-targets', help = "list supported target sites", action = 'store_true')
 parsed_args = parser.parse_args(args)
+debug_enforce = False
 if parsed_args.debug:
 	config['debug'] = True
+	debug_enforce = True
 elif parsed_args.no_debug:
 	config['debug'] = False
+	debug_enforce = True
 debug_prt('parsed_args = {}', repr(parsed_args))
 if parsed_args.conf:
-	configparse(parsed_args.conf, False)
+	configparse(parsed_args.conf, False, debug_enforce)
 	config['conffile'] = parsed_args.conf
 else:
-	configparse(config['conffile'])
-if parsed_args.debug:
-	config['debug'] = True
-elif parsed_args.no_debug:
-	config['debug'] = False
+	configparse(config['conffile'], True, debug_enforce)
+strlst_gen()
+if parsed_args.no_target:
+	for i in config['target']:
+		config['target'][i]['enable'] = False
 if parsed_args.only:
 	if parsed_args.only not in config['target']:
 		raise Exception('Target specified with --only not found.')
@@ -660,6 +718,17 @@ if parsed_args.disable:
 		if i not in config['target']:
 			raise Exception('Target specified with --disable not found.')
 		config['target'][i]['enable'] = False
+if parsed_args.accountinfo:
+	if len(parsed_args.accountinfo) % 3:
+		prtmsg('err_unused_arg', name = 'accountinfo', number = len(parsed_args.accountinfo) % 3)
+	for i in range(len(parsed_args.accountinfo) // 3):
+		if parsed_args.accountinfo[i * 3] not in config['target']:
+			raise Exception('Target specified with --accountinfo not found.')
+		editconf(config['target'][parsed_args.accountinfo[i * 3]], 'username', repr(parsed_args.accountinfo[i * 3 + 1]))
+		editconf(config['target'][parsed_args.accountinfo[i * 3]], 'password', repr(parsed_args.accountinfo[i * 3 + 2]))
+	del i
+if None != parsed_args.cycles:
+	config['cycles'] = int(parsed_args.cycles)
 if 'genconf' in parsed_args:
 	genconf((parsed_args.genconf if None != parsed_args.genconf else '-'), False, parsed_args.separate)
 	exit()
@@ -670,6 +739,7 @@ elif parsed_args.list_targets:
 	lstargets()
 	exit()
 del parser, args, parsed_args, group
+strlst_cleanup()
 
 # Build urllib.request opener
 cookieprocessor = urllib.request.HTTPCookieProcessor()
@@ -680,14 +750,22 @@ cookieprocessor.cookiejar = cookies
 defopener = urllib.request.build_opener(cookieprocessor, httphandler)
 urllib.request.install_opener(defopener)
 
-genstrlst()
 
 # Main section
+if not (config['cycles'] - cur_cycle):
+	exit()
 while True:
+	remaining = (-1 if config['cycles'] < 0 else config['cycles'] - cur_cycle - 1)
+	prtmsg('msg_start', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
 	for i in config['target'].keys():
 		if config['target'][i]['enable']:
 			newpostscheck(i)
+	prtmsg('msg_fin', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
+	cmdqueue_add('cmd_fin', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
 	cmdqueue_proc()
+	cur_cycle += 1
+	if not (config['cycles'] - cur_cycle):
+		break
 	timer = config['interval']
 	prtmsg('msg_next', timer)
 	try:
