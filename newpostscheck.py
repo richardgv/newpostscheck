@@ -81,14 +81,14 @@ config['target'] = dict(
 		regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'), 
 		
 		serial_experience = dict(
-		enable = False, 
+		enable = True, 
 		username = '', 
 		password = '', 
-		url = 'http://www.serialexperience.co.cc/search.php?action=unreads', 
-		url_index = 'http://www.serialexperience.co.cc/', 
+		url = 'http://serialexperience.us.to/search.php?action=unreads', 
+		url_index = 'http://serialexperience.us.to/', 
 		encoding = 'utf-8', 
-		url_login = 'http://www.serialexperience.co.cc/member.php?action=login', 
-		base = 'http://www.serialexperience.co.cc/', 
+		url_login = 'http://serialexperience.us.to/member.php?action=login', 
+		base = 'http://serialexperience.us.to/', 
 		regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->', 
 		regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>', 
 		regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>', 
@@ -96,9 +96,9 @@ config['target'] = dict(
 		regex_login_success = '<a href="(member.php?action=logout.+?)">Log Out</a>', 
 		regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)', 
 		regex_login_fail_group = 2, 
-		query_login = 'action=do_login&url=http%3A%2F%2Fwww.serialexperience.co.cc%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes', 
+		query_login = 'action=do_login&url=http%3A%2F%2Fserialexperience.us.to%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes', 
 		regex_logout = r'<!-- end: headerinclude -->(?!(.|\n)+ajaxpmnotice\(\))', 
-		regex_url_logout = r'<a href="(member.php?action=logout.+?)">Log Out</a>', 
+		regex_url_logout = r'<a href="([^"]*)" class="logout">', 
 		regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>', 
 		regex_friendlyredir = '<a href="([^"]+)">(<span class="smalltext">)?Click here if you don\'t want to wait any longer.'), 
 		
@@ -207,10 +207,16 @@ config['strlst'] = dict(
 		msg_newpost = dict(posix = '\033[1;32mA new post in {site}: {title} by {author}\033[0m:\n{url}\n', default = 'A new post in {site}: {title} by {author}:\n{url}\n'), 
 		msg_nonewpost = dict(default = 'No new posts found in {site}.\n'), 
 		msg_start = dict(default = 'Starting checking cycle {cycle}...\n', ),
-		msg_fin = dict(default = 'Finished checking cycle {cycle}...\n', ),
+		msg_start_term = dict(default = '\033]2;Checking...\007', ),
+		msg_fin = dict(default = 'Finished checking cycle {cycle}, a total of {found} new post(s) found...\n', ),
+		msg_fin_term = dict(default = '\033]2;{found} new posts\007', ),
+		msg_fin_notfound = dict(default = 'Finished checking cycle {cycle}, no new posts found...\n', ),
+		msg_fin_notfound_term = dict(default = '\033]2;No new posts\007', ),
 		msg_check = dict(default = 'Checking {}...\n', ),
+		msg_check_term = dict(default = '', ),
 		msg_next = dict(default = 'Next check: {} seconds later\n', ),
 		msg_interval = dict(posix = '\r\033[1G\033[K{} seconds left', default = '\r{} seconds left'),
+		msg_interval_term = dict(default = ''),
 		msg_intervalend = dict(posix = '\033[1G\033[K', default = '\r'),
 		msg_login = dict(default = 'Hmm, I forgot to login to {}?\n'),
 		msg_login_success = dict(default = 'Logged in to {}.\n'),
@@ -218,6 +224,7 @@ config['strlst'] = dict(
 		msg_logout = dict(default = 'Trying to log out of {}...\n'),
 		msg_retry = dict(default = 'Retrying...\n'),
 		msg_interrupt = dict(default = '\n'),
+		msg_interrupt_term = dict(default = '\033]2;\007'),
 		msg_friendlyredir = dict(default = '\"Friendly\" redirection... I hate this.\n'),
 		err_login_fail = dict(default = 'Hmm, the login failed somehow...\n', flag_err = True),
 		err_login_fail_reason = dict(default = 'Hmm, the login failed... And the following reason is given: {reason}\n', flag_err = True),
@@ -233,7 +240,7 @@ config['strlst'] = dict(
 		err_logout_notfound = dict(default = 'The logout URL cannot be found... Probably you are not logged in at all.\n', flag_err = True),
 		err_io = dict(default = 'I met an IOError: {}\n', flag_err = True),
 		err_unused_arg = dict(default = '{number} of {name} argument(s) is/are not used.\n', flag_err = True),
-		cmd_newpost = dict(posix = [r'notify-send A\ new\ post\ in\ {site_esc_html} {title_esc_html}\ by\ {author_esc_html}', 'mplayer2 -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
+		cmd_newpost = dict(posix = [r'if [ -n $DISPLAY ]; then notify-send A\ new\ post\ in\ {site_esc_html} {title_esc_html}\ by\ {author_esc_html}; fi', 'mplayer2 -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
 		cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []), 
 		cmd_fin = dict(default = []), 
 		)
@@ -493,6 +500,14 @@ def groupsel(match, key, name):
 		if None != match.group(i):
 			return match.group(i)
 
+def prtmsg_term(strindex, *arg, **kwargs):
+	term = os.environ.get('TERM', '').strip()
+	if term and 'linux' != term:
+		prtmsg(strindex, *arg, **kwargs)
+		return True
+	else:
+		return False
+
 # cmdqueue functions
 def cmdqueue_add(cmdindex, *arg, **kwargs):
 	global cmdqueue
@@ -602,10 +617,11 @@ def request(url, encoding, data = None):
 	return resp;
 
 def newpostscheck(key):
+	prtmsg_term('msg_check_term', key)
 	prtmsg('msg_check', key)
 	retry = config['maxretry']
-	success = False
 	while retry:
+		success = False
 		retry -= 1
 		i = 1
 		while True:
@@ -636,18 +652,20 @@ def newpostscheck(key):
 			resp = friendlyredir(key, resp)
 			if resp:
 				break
+			else:
+				success = False
 	if not success:
 		prtmsg('err_tmretries', key)
 		cmdqueue_add('cmd_err', site = key)
 		if not config['cmdqueuing']:
 			cmdquee_proc()
 		return None
-	found = False
+	found = 0
 	if config['target'][key].get('regex_empty') and re.search(config['target'][key]['regex_empty'], resp):
 		debug_prt('regex_empty matched.')
 	elif 'regex_newpost' in config['target'][key] and config['target'][key]['regex_newpost']:
 		for match in re.finditer(config['target'][key]['regex_newpost'], resp):
-			found = True
+			found += 1
 			match = groupsel(match, key, 'newpost')
 			info = dict()
 			for i in config['target'][key]:
@@ -663,6 +681,7 @@ def newpostscheck(key):
 				cmdquee_proc()
 	if not found:
 		prtmsg('msg_nonewpost', site = key)
+	return found
 
 def logout(key):
 	if not config['target'][key].get('url_index') or not config['target'][key].get('regex_url_logout'):
@@ -911,11 +930,20 @@ if not (config['cycles'] - cur_cycle):
 	exit()
 while True:
 	remaining = (-1 if config['cycles'] < 0 else config['cycles'] - cur_cycle - 1)
+	prtmsg_term('msg_start_term', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
 	prtmsg('msg_start', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
+	total_found = 0
 	for i in config['target'].keys():
 		if config['target'][i]['enable']:
-			newpostscheck(i)
-	prtmsg('msg_fin', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
+			found = newpostscheck(i)
+			if None != found:
+				total_found += found
+	if total_found:
+		prtmsg_term('msg_fin_term', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'], found = total_found)
+		prtmsg('msg_fin', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'], found = total_found)
+	else:
+		prtmsg('msg_fin_notfound', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
+		prtmsg_term('msg_fin_notfound_term', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
 	cmdqueue_add('cmd_fin', cycle = cur_cycle, total = config['interval'], remaining = remaining, eta = remaining * config['interval'])
 	cmdqueue_proc()
 	cur_cycle += 1
@@ -928,7 +956,9 @@ while True:
 			time.sleep(1)
 			timer -= 1
 			prtmsg('msg_interval', timer)
+			prtmsg_term('msg_interval_term', timer)
 	except KeyboardInterrupt:
+		prtmsg_term('msg_interrupt_term')
 		prtmsg('msg_interrupt')
 		exit()
 	prtmsg('msg_intervalend', timer)
