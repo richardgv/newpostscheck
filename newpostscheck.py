@@ -93,11 +93,11 @@ config['target'] = dict(
 		regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>', 
 		regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>', 
 		regex_post_url = r'<a href="(.+?)"><img src="', 
-		regex_login_success = '<a href="(member.php?action=logout.+?)">Log Out</a>', 
+		regex_login_success = '(<a href="(member.php?action=logout.+?)">Log Out</a>|<td class="trow1" align="center"><p>You have successfully been logged in.<br />)', 
 		regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)', 
 		regex_login_fail_group = 2, 
 		query_login = 'action=do_login&url=http%3A%2F%2Fserialexperience.us.to%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes', 
-		regex_logout = r'<!-- end: headerinclude -->(?!(.|\n)+ajaxpmnotice\(\))', 
+		regex_logout = r'<span class="welcome" id="quick_login">', 
 		regex_url_logout = r'<a href="([^"]*)" class="logout">', 
 		regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>', 
 		regex_friendlyredir = '<a href="([^"]+)">(<span class="smalltext">)?Click here if you don\'t want to wait any longer.'), 
@@ -621,40 +621,18 @@ def newpostscheck(key):
 	prtmsg('msg_check', key)
 	retry = config['maxretry']
 	while retry:
-		success = False
 		retry -= 1
-		i = 1
-		while True:
-			resp = request(config['target'][key]['url'], config['target'][key]['encoding'])
-			if not resp:
-				prtmsg('err_fail', key)
-				break
-			if config['target'][key].get('regex_logout') and re.search(config['target'][key]['regex_logout'], resp):
-				prtmsg('msg_login', key)
-				if not i:
-					break
-				if config['target'][key].get('url_login') and config['target'][key].get('username') and config['target'][key].get('password') and config['login']:
-					if login(key, resp):
-						i -= 1
-					else:
-						break
-				else:
-					if config['login']:
-						prtmsg('err_nologin', key)
-					else:
-						prtmsg('err_noaccount', key)
-					retry = 0
-					break
-			else:
-				success = True
-				break
-		if success:
-			resp = friendlyredir(key, resp)
-			if resp:
-				break
-			else:
-				success = False
-	if not success:
+		resp = request(config['target'][key]['url'], config['target'][key]['encoding'])
+		if not resp:
+			prtmsg('err_fail', key)
+			continue
+		resp = chk_login_state(key, resp)
+		resp = friendlyredir(key, resp)
+		if isinstance(resp, str):
+			break
+		if -2 == resp:
+			retry = 0
+	else:
 		prtmsg('err_tmretries', key)
 		cmdqueue_add('cmd_err', site = key)
 		if not config['cmdqueuing']:
@@ -682,6 +660,24 @@ def newpostscheck(key):
 	if not found:
 		prtmsg('msg_nonewpost', site = key)
 	return found
+
+def chk_login_state(key, resp):
+	if not isinstance(resp, str):
+		return resp
+	if config['target'][key].get('regex_logout') and re.search(config['target'][key]['regex_logout'], resp):
+		prtmsg('msg_login', key)
+		if config['target'][key].get('url_login') and config['target'][key].get('username') and config['target'][key].get('password') and config['login']:
+			if login(key, resp):
+				return 0
+			else:
+				return -1
+		else:
+			if config['login']:
+				prtmsg('err_nologin', key)
+			else:
+				prtmsg('err_noaccount', key)
+			return -2
+	return resp
 
 def logout(key):
 	if not config['target'][key].get('url_index') or not config['target'][key].get('regex_url_logout'):
@@ -717,21 +713,23 @@ def save_cookies():
 		else:
 			debug_prt('Cookies saved to "{}"', config['cookiefilepath'])
 
-def friendlyredir(key, oriresp):
+def friendlyredir(key, resp):
+	if not isinstance(resp, str):
+		return resp
 	if config['target'][key].get('regex_friendlyredir'):
 		prtmsg('msg_friendlyredir', key)
-		match = re.search(config['target'][key]['regex_friendlyredir'], oriresp)
+		match = re.search(config['target'][key]['regex_friendlyredir'], resp)
 		if not match:
 			prtmsg('err_no_friendlyredir_target')
 			return
 		match = config['target'][key]['base'] + unescape(groupsel(match, key, 'friendlyredir'))
-		retry = config['maxretry']
 		resp = request(match, config['target'][key]['encoding'])
 		if not resp:
 			prtmsg('err_friendlyredir_fail', key)
+		resp = chk_login_state(key, resp)
 		return resp
 	else:
-		return oriresp
+		return resp
 
 def login(key, resp):
 	success = False
