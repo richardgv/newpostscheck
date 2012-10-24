@@ -60,152 +60,152 @@ config = dict(
         )
 config['target'] = dict(
         niftyhost = dict(
-        enable = True, 
-        username = '', 
-        password = '', 
-        url = 'http://www.niftyhost.us/support/search.php?action=unreads', 
-        url_index = 'http://www.niftyhost.us/support/', 
-        encoding = 'utf-8', 
-        url_login = 'http://www.niftyhost.us/support/member.php', 
-        base = 'http://www.niftyhost.us/support/', 
-        regex_newpost = r'<a href="[^>]+><img[^>]+?alt="Go to first unread post"(.|\n)+?</tr>', 
-        regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>', 
-        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>', 
-        regex_post_url = r'<a href="(.+?)"><img src="', 
-        regex_login_success = r'<a href="(member\.php\?action=logout.+?)">Log Out</a>', 
-        regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)', 
-        regex_login_fail_group = (2, 3), 
-        query_login = 'action=do_login&url=http%3A%2F%2Fwww.niftyhost.us%2Fsupport%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes', 
-        regex_logout = r'<span id="quick_login">Hello There, Guest!', 
-        regex_url_logout = r'<a href="(member\.php\?action=logout.+?)">Log Out</a>', 
-        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'), 
-        
+        enable = True,
+        username = '',
+        password = '',
+        url = 'http://www.niftyhost.us/support/search.php?action=unreads',
+        url_index = 'http://www.niftyhost.us/support/',
+        encoding = 'utf-8',
+        url_login = 'http://www.niftyhost.us/support/member.php',
+        base = 'http://www.niftyhost.us/support/',
+        regex_newpost = r'<a href="[^>]+><img[^>]+?alt="Go to first unread post"(.|\n)+?</tr>',
+        regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>',
+        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>',
+        regex_post_url = r'<a href="(.+?)"><img src="',
+        regex_login_success = r'<a href="(member\.php\?action=logout.+?)">Log Out</a>',
+        regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)',
+        regex_login_fail_group = (2, 3),
+        query_login = 'action=do_login&url=http%3A%2F%2Fwww.niftyhost.us%2Fsupport%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes',
+        regex_logout = r'<span id="quick_login">Hello There, Guest!',
+        regex_url_logout = r'<a href="(member\.php\?action=logout.+?)">Log Out</a>',
+        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'),
+       
         singularity = dict(
-        enable = True, 
-        username = '', 
-        password = '', 
-        url = 'http://forum.singularity.us.to/search.php?action=unreads', 
-        url_index = 'http://forum.singularity.us.to/', 
-        encoding = 'utf-8', 
-        url_login = 'http://forum.singularity.us.to/member.php?action=login', 
-        base = 'http://forum.singularity.us.to/', 
-        regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->', 
-        regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>', 
-        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>', 
-        regex_post_url = r'<a href="(.+?)"><img src="', 
-        regex_login_success = '(<a href="(member.php?action=logout.+?)">Log Out</a>|<td class="trow1" align="center"><p>You have successfully been logged in.<br />)', 
-        regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)', 
-        regex_login_fail_group = 2, 
-        query_login = 'action=do_login&url=http%3A%2F%2Fforum.singularity.us.to%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes', 
-        regex_logout = r'<!-- start: header_welcomeblock_guest -->', 
-        regex_url_logout = r'<a href="([^"]*)" class="logout">', 
-        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>', 
-        regex_friendlyredir = '<a href="([^"]+)">(<span class="smalltext">)?Click here if you don\'t want to wait any longer.'), 
-        
+        enable = True,
+        username = '',
+        password = '',
+        url = 'http://forum.singul4rity.com/search.php?action=getnew',
+        url_index = 'http://forum.singul4rity.com/',
+        encoding = 'utf-8',
+        url_login = 'http://forum.singul4rity.com/member.php?action=login',
+        base = 'http://forum.singul4rity.com/',
+        regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->',
+        regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>',
+        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>',
+        regex_post_url = r'<a href="(.+?)"><img src="',
+        regex_login_success = '(<a href="(member.php?action=logout.+?)">Log Out</a>|<td class="trow1" align="center"><p>You have successfully been logged in.<br />)',
+        regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)',
+        regex_login_fail_group = 2,
+        query_login = 'action=do_login&url=http%3A%2F%2Fforum.singul4rity.com%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes',
+        regex_logout = r'<!-- start: header_welcomeblock_guest -->',
+        regex_url_logout = r'<a href="([^"]*)" class="logout">',
+        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>',
+        regex_friendlyredir = '<a href="([^"]+)">(<span class="smalltext">)?Click here if you don\'t want to wait any longer.'),
+       
         xdwebhosting = dict(
-        enable = True, 
-        username = '', 
-        password = '', 
-        base = 'http://www.xdwebhosting.com/forums/', 
-        url = 'http://www.xdwebhosting.com/forums/search.php?action=getnew', 
-        url_index = 'http://www.xdwebhosting.com/forums/', 
-        encoding = 'utf-8', 
-        url_login = 'http://www.xdwebhosting.com/forums/member.php', 
-        regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->', 
-        regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>', 
-        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>', 
-        regex_post_url = r'<a href="(.+?)"><img src="', 
-        regex_login_success = r'<a href="([^"]*)" class="logout">', 
-        regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)', 
-        regex_login_fail_group = 2, 
-        query_login = 'action=do_login&url=http%3A%2F%2Fwww.xdwebhosting.com%2Fforums%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes', 
-        regex_logout = r'<span id="quick_login">Hello There, Guest!', 
-        regex_url_logout = r'<a href="([^"]*)" class="logout">', 
-        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'), 
-        
+        enable = True,
+        username = '',
+        password = '',
+        base = 'http://www.xdwebhosting.com/forums/',
+        url = 'http://www.xdwebhosting.com/forums/search.php?action=getnew',
+        url_index = 'http://www.xdwebhosting.com/forums/',
+        encoding = 'utf-8',
+        url_login = 'http://www.xdwebhosting.com/forums/member.php',
+        regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->',
+        regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>',
+        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>',
+        regex_post_url = r'<a href="(.+?)"><img src="',
+        regex_login_success = r'<a href="([^"]*)" class="logout">',
+        regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)',
+        regex_login_fail_group = 2,
+        query_login = 'action=do_login&url=http%3A%2F%2Fwww.xdwebhosting.com%2Fforums%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes',
+        regex_logout = r'<span id="quick_login">Hello There, Guest!',
+        regex_url_logout = r'<a href="([^"]*)" class="logout">',
+        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'),
+       
         zemhost = dict(
         enable = False,
-        username = '', 
-        password = '', 
-        url = 'http://www.zemhost.com/forums/search.php?do=getnew&contenttype=vBForum_Post', 
-        url_index = 'http://www.zemhost.com/forums/', 
-        encoding = 'iso-8859-1', 
-        url_login = 'http://www.zemhost.com/forums/login.php?do=login', 
-        base = 'http://www.zemhost.com/forums/', 
-        regex_newpost = r'<h3 class="searchtitle">(.|\n)+?<div class="threadpostedin td alt">(.|\n)+?</div>', 
-        regex_post_title = r'<a class="title threadtitle_unread" href=".+?" id=".+?" title="(.|\n)+?">(.+?)</a>', 
+        username = '',
+        password = '',
+        url = 'http://www.zemhost.com/forums/search.php?do=getnew&contenttype=vBForum_Post',
+        url_index = 'http://www.zemhost.com/forums/',
+        encoding = 'iso-8859-1',
+        url_login = 'http://www.zemhost.com/forums/login.php?do=login',
+        base = 'http://www.zemhost.com/forums/',
+        regex_newpost = r'<h3 class="searchtitle">(.|\n)+?<div class="threadpostedin td alt">(.|\n)+?</div>',
+        regex_post_title = r'<a class="title threadtitle_unread" href=".+?" id=".+?" title="(.|\n)+?">(.+?)</a>',
         regex_post_title_group = 2,
-        regex_post_author = r'<dd>\s+by <a href=".+?">(.+?)</a>', 
-        regex_post_url = r'<a href="(.+?)" id=".+?"><img class="gotonewpost"', 
+        regex_post_author = r'<dd>\s+by <a href=".+?">(.+?)</a>',
+        regex_post_url = r'<a href="(.+?)" id=".+?"><img class="gotonewpost"',
         regex_login_success = '',
-        regex_login_fail = '', 
-        query_login = 'vb_login_username={username}&vb_login_password_hint=Password&vb_login_password=&cookieuser=1&s=&securitytoken=guest&do=login&vb_login_md5password={pwdmd5}&vb_login_md5password_utf={pwdmd5_utf}', 
-        regex_logout = r'<ul class="nouser">', 
-        regex_url_logout = r'', 
-        regex_empty = r'<div class="blockrow restore">Sorry, there are no new posts to view.<br />'), 
-        
+        regex_login_fail = '',
+        query_login = 'vb_login_username={username}&vb_login_password_hint=Password&vb_login_password=&cookieuser=1&s=&securitytoken=guest&do=login&vb_login_md5password={pwdmd5}&vb_login_md5password_utf={pwdmd5_utf}',
+        regex_logout = r'<ul class="nouser">',
+        regex_url_logout = r'',
+        regex_empty = r'<div class="blockrow restore">Sorry, there are no new posts to view.<br />'),
+       
         kottnet = dict(
-        enable = False, 
-        username = '', 
-        password = '', 
-        url = 'http://kottnet.net/forum/index.php?action=unread;all;start=0', 
-        url_index = 'http://kottnet.net/forum/', 
-        encoding = 'utf-8', 
-        url_login = 'http://kottnet.net/forum/index.php?action=login2', 
-        base = 'http://kottnet.net/forum/', 
-        regex_newpost = r'<tr>(.|\n)+?</tr>', 
-        regex_post_title = r'<span id="msg_\d+"><a href=".+?">(.+?)</a></span>', 
-        regex_post_author = r'(?<!Started )by <a href=".+?">(.+?)</a>', 
-        regex_post_url = r'<a href="http://kottnet.net/forum/(.+?)" id="newicon\d+"><img src=".+?" alt="New" /></a>', 
-        query_login = 'user={username}&passwrd=&cookielength=-1&hash_passwrd={smfhash}', 
+        enable = False,
+        username = '',
+        password = '',
+        url = 'http://kottnet.net/forum/index.php?action=unread;all;start=0',
+        url_index = 'http://kottnet.net/forum/',
+        encoding = 'utf-8',
+        url_login = 'http://kottnet.net/forum/index.php?action=login2',
+        base = 'http://kottnet.net/forum/',
+        regex_newpost = r'<tr>(.|\n)+?</tr>',
+        regex_post_title = r'<span id="msg_\d+"><a href=".+?">(.+?)</a></span>',
+        regex_post_author = r'(?<!Started )by <a href=".+?">(.+?)</a>',
+        regex_post_url = r'<a href="http://kottnet.net/forum/(.+?)" id="newicon\d+"><img src=".+?" alt="New" /></a>',
+        query_login = 'user={username}&passwrd=&cookielength=-1&hash_passwrd={smfhash}',
         regex_login_success = '',
-        regex_login_fail = '', 
-        regex_logout = r'<form id="guest_form"', 
-        regex_url_logout = r'', 
-        regex_empty = r'<h3 class="catbg centertext">\s+No messages...', 
-        regex_login_session = 'onsubmit="hashLoginPassword\\(this, \'(\\w+)\'\\);"'), 
-        
+        regex_login_fail = '',
+        regex_logout = r'<form id="guest_form"',
+        regex_url_logout = r'',
+        regex_empty = r'<h3 class="catbg centertext">\s+No messages...',
+        regex_login_session = 'onsubmit="hashLoginPassword\\(this, \'(\\w+)\'\\);"'),
+       
         fvwmforums = dict(
-        enable = True, 
-        username = '', 
-        password = '', 
-        url = 'http://www.fvwmforums.org/phpBB3/search.php?search_id=unreadposts', 
-        url_index = 'http://www.fvwmforums.org/phpBB3/', 
-        encoding = 'utf-8', 
-        url_login = 'http://www.fvwmforums.org/phpBB3/ucp.php?mode=login', 
-        base = 'http://www.fvwmforums.org/phpBB3/', 
-        query_login = 'username={username}&password={password}&autologin=on&login=Login&redirect=.%2Findex.php%3F', 
-        regex_logout = r'title="Login" accesskey="x">Login</a></li>', 
-        regex_newpost = r'<dl class="icon" style="background-image: url\(\./styles/prosilver/imageset/topic_unread.gif\); background-repeat: no-repeat;">(.|\n)+?</dl>', 
-        regex_post_title = r'class="topictitle">(.+?)</a>', 
-        regex_post_author = r'by <a href=".+?">(.+?)</a>\n', 
-        regex_post_url = r'<a href="./(.+?)"><img src="\./styles/prosilver/imageset/icon_topic_newest.gif"', 
+        enable = True,
+        username = '',
+        password = '',
+        url = 'http://www.fvwmforums.org/phpBB3/search.php?search_id=unreadposts',
+        url_index = 'http://www.fvwmforums.org/phpBB3/',
+        encoding = 'utf-8',
+        url_login = 'http://www.fvwmforums.org/phpBB3/ucp.php?mode=login',
+        base = 'http://www.fvwmforums.org/phpBB3/',
+        query_login = 'username={username}&password={password}&autologin=on&login=Login&redirect=.%2Findex.php%3F',
+        regex_logout = r'title="Login" accesskey="x">Login</a></li>',
+        regex_newpost = r'<dl class="icon" style="background-image: url\(\./styles/prosilver/imageset/topic_unread.gif\); background-repeat: no-repeat;">(.|\n)+?</dl>',
+        regex_post_title = r'class="topictitle">(.+?)</a>',
+        regex_post_author = r'by <a href=".+?">(.+?)</a>\n',
+        regex_post_url = r'<a href="./(.+?)"><img src="\./styles/prosilver/imageset/icon_topic_newest.gif"',
         regex_login_success = 'accesskey="x">Logout',
-        regex_login_fail = '<div class="error">(.+?)</div>', 
-        regex_url_logout = r'<a href="([^"]*logout[^"]*)" title="Logout', 
-        regex_empty = r'<strong>No suitable matches were found.</strong>'), 
-        
+        regex_login_fail = '<div class="error">(.+?)</div>',
+        regex_url_logout = r'<a href="([^"]*logout[^"]*)" title="Logout',
+        regex_empty = r'<strong>No suitable matches were found.</strong>'),
+       
         ucweb = dict(
-        enable = False, 
-        username = '', 
-        password = '', 
-        url = 'http://forum.ucweb.com/', 
-        url_index = 'http://forum.ucweb.com/', 
-        encoding = 'utf-8', 
-        url_login = 'http://forum.ucweb.com/logging.php?action=login&', 
-        base = 'http://forum.ucweb.com/', 
-        query_login = 'formhash={formhash}&referer=index.php&loginfield=username&username={username}&password={password}&questionid=0&answer=&cookietime=315360000&loginmode=&styleid=&loginsubmit=true', 
+        enable = False,
+        username = '',
+        password = '',
+        url = 'http://forum.ucweb.com/',
+        url_index = 'http://forum.ucweb.com/',
+        encoding = 'utf-8',
+        url_login = 'http://forum.ucweb.com/logging.php?action=login&',
+        base = 'http://forum.ucweb.com/',
+        query_login = 'formhash={formhash}&referer=index.php&loginfield=username&username={username}&password={password}&questionid=0&answer=&cookietime=315360000&loginmode=&styleid=&loginsubmit=true',
         regex_login_success = '',
-        regex_login_fail = '', 
-        regex_logout = r'<li><a href="register.php" class="notabs">Register</a></li>', 
-        regex_url_logout = r'', 
-        regex_login_session = r'<input type="hidden" name="formhash" value="(\w+)" />'), 
+        regex_login_fail = '',
+        regex_logout = r'<li><a href="register.php" class="notabs">Register</a></li>',
+        regex_url_logout = r'',
+        regex_login_session = r'<input type="hidden" name="formhash" value="(\w+)" />'),
         )
 config['strlst'] = dict(
-        fdbg = dict(posix = '\033[32mDEBUG: {}\033[0m\n', default = 'DEBUG: {}\n', file = { sys.stderr }), 
+        fdbg = dict(posix = '\033[32mDEBUG: {}\033[0m\n', default = 'DEBUG: {}\n', file = { sys.stderr }),
         ferr = dict(posix = '\033[41m{}\033[0m', default = '{}', file = { sys.stderr }),
-        msg_newpost = dict(posix = '\033[1;32mA new post in {site}: {title} by {author}\033[0m:\n{url}\n', default = 'A new post in {site}: {title} by {author}:\n{url}\n'), 
-        msg_nonewpost = dict(default = 'No new posts found in {site}.\n'), 
+        msg_newpost = dict(posix = '\033[1;32mA new post in {site}: {title} by {author}\033[0m:\n{url}\n', default = 'A new post in {site}: {title} by {author}:\n{url}\n'),
+        msg_nonewpost = dict(default = 'No new posts found in {site}.\n'),
         msg_start = dict(default = 'Starting checking cycle {cycle}...\n', ),
         msg_start_term = dict(default = '\033]2;Checking...\007', ),
         msg_fin = dict(default = 'Finished checking cycle {cycle}, a total of {found} new post(s) found...\n', ),
@@ -240,9 +240,9 @@ config['strlst'] = dict(
         err_logout_notfound = dict(default = 'The logout URL cannot be found... Probably you are not logged in at all.\n', flag_err = True),
         err_io = dict(default = 'I met an IOError: {}\n', flag_err = True),
         err_unused_arg = dict(default = '{number} of {name} argument(s) is/are not used.\n', flag_err = True),
-        cmd_newpost = dict(posix = [r'if [ -n $DISPLAY ]; then notify-send A\ new\ post\ in\ {site_esc_html} {title_esc_html}\ by\ {author_esc_html}; fi', 'mplayer2 -really-quiet /usr/share/sounds/purple/receive.wav'], default = []), 
-        cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []), 
-        cmd_fin = dict(default = []), 
+        cmd_newpost = dict(posix = [r'if [ -n $DISPLAY ]; then notify-send A\ new\ post\ in\ {site_esc_html} {title_esc_html}\ by\ {author_esc_html}; fi', 'mplayer2 -really-quiet /usr/share/sounds/purple/receive.wav'], default = []),
+        cmd_err = dict(posix = [r'notify-send I\ failed\ when\ checking\ new\ posts\ in\ {site_esc}', ], default = []),
+        cmd_fin = dict(default = []),
         )
 
 def getosstr(tb):
@@ -299,22 +299,22 @@ def configparse(path, ignore_missing, debug_enforce):
             raise Exception('Configuration parsing error')
         elif 'config' == name and 'name' in attrs \
                 and attrs['name'] in config:
-            edit = dict( type = 'config', 
+            edit = dict( type = 'config',
                     name = attrs['name'],
                     mode = attrs.get('mode', 'assign') )
         elif 'target' == name and 'key' in attrs \
                 and 'name' in attrs:
-            edit = dict( type = 'target', 
+            edit = dict( type = 'target',
                     key = attrs['key'],
                     name = attrs['name'],
                     mode = attrs.get('mode', 'assign') )
         elif 'strlst' == name and 'key' in attrs:
-            edit = dict( type = 'strlst', 
+            edit = dict( type = 'strlst',
                     key = attrs['key'],
                     name = attrs.get('name', os.name),
                     mode = attrs.get('mode', 'assign') )
         elif 'include' == name:
-            edit = dict( type = 'include', 
+            edit = dict( type = 'include',
                     ignore_missing = (False if attrs.get('ignore_missing', 'True') in { 'False', 'false', '0' } else True) )
         editdata = ''
     def configparse_endele(name):
@@ -418,6 +418,17 @@ def srepr(item):
     else:
         return repr(item)
 
+# Thanks to HiddenKn (HiddenKnowledge) for suggestion and implementation
+def mkdirp(path):
+    '''Recursively create all parent directories of a path'''
+    path = os.path.dirname(path)
+    if path:
+        try:
+            os.makedirs(path, exist_ok = True)
+        except OSError:
+            # Ignore any exception
+            pass
+
 # XML config generator
 def genconf(output, full = False, separate = False):
     try:
@@ -432,7 +443,7 @@ def genconf(output, full = False, separate = False):
             ele.text = (etree.CDATA(srepr(item)) if not (isinstance(item, bool) or isinstance(item, int)) else repr(item))
         else:
             ele.text = srepr(item)
-    
+   
     def writetree(root, output, sub = ''):
         if 'lxml' in sys.modules:
             xmlstr = etree.tostring(root, encoding = 'utf-8', xml_declaration = True, pretty_print = True).decode('utf-8')
@@ -442,6 +453,7 @@ def genconf(output, full = False, separate = False):
         if '-' == output:
             sys.stdout.write(('\n' + sub + ':\n' if sub else '') + xmlstr)
         else:
+            mkdirp(output)
             f = open(output + sub, 'w', encoding = 'utf-8')
             f.write(xmlstr)
             f.close()
