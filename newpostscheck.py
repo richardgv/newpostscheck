@@ -76,7 +76,7 @@ config['target'] = dict(
         regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)',
         regex_login_fail_group = (2, 3),
         query_login = 'action=do_login&url=http%3A%2F%2Fwww.niftyhost.us%2Fsupport%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes',
-        regex_logout = r'<span id="quick_login">Hello There, Guest!',
+        regex_logout = r' name="action" value="do_login" />',
         regex_url_logout = r'<a href="(member\.php\?action=logout.+?)">Log Out</a>',
         regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'),
        
@@ -505,6 +505,8 @@ def msg_cleanup(msg):
     return re.sub(r'^\s+', '', msg, flags = re.MULTILINE)
 
 def groupsel(match, key, name):
+    if not match:
+        return ''
     group = config['target'][key].get('regex_'+ name + '_group', config['regex_default'][name])
     if isinstance(group, int):
         return match.group(group)
