@@ -93,7 +93,7 @@ config['target'] = dict(
         base = 'http://forum.singul4rity.com/',
         regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->',
         regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>',
-        regex_post_author = r'<a href=".+?\.html">Last Post</a>: <a href=".+?\.html">(.*?)</a>',
+        regex_post_author = r'<a href=".+?\.html">Last Post</a> by <a href=".+?\.html">(.*?)</a>',
         regex_post_url = r'<a href="(.+?)"><img src="',
         regex_login_success = '(<a href="(member.php?action=logout.+?)">Log Out</a>|<td class="trow1" align="center"><p>You have successfully been logged in.<br />)',
         regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)',
