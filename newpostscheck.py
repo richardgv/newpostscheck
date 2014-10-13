@@ -60,7 +60,7 @@ config = dict(
         )
 config['target'] = dict(
         niftyhost = dict(
-        enable = True,
+        enable = False,
         username = '',
         password = '',
         url = 'http://www.niftyhost.us/board/index.php?app=core&module=search&do=viewNewContent&search_app=forums',
@@ -86,14 +86,14 @@ config['target'] = dict(
         enable = True,
         username = '',
         password = '',
-        url = 'http://forum.singul4rity.com/search.php?action=getnew',
+        url = 'http://forum.singul4rity.com/search.php?action=unreads',
         url_index = 'http://forum.singul4rity.com/',
         encoding = 'utf-8',
         url_login = 'http://forum.singul4rity.com/member.php?action=login',
         base = 'http://forum.singul4rity.com/',
         regex_newpost = r'<!-- start: forumdisplay_thread_gotounread -->(.|\n)+?<!-- end: search_results_threads_thread -->',
         regex_post_title = r'<a href=".+?\.html" class="[\w\s]+subject_new" id="tid_.*?">(.+?)</a>',
-        regex_post_author = r'<a href=".+?\.html">Last Post</a> by <a href=".+?\.html">(.*?)</a>',
+        regex_post_author = r'<a href=".+?\.html">Last Post</a>(?: by|:) <a href=".+?\.html">(.*?)</a>',
         regex_post_url = r'<a href="(.+?)"><img src="',
         regex_login_success = '(<a href="(member.php?action=logout.+?)">Log Out</a>|<td class="trow1" align="center"><p>You have successfully been logged in.<br />)',
         regex_login_fail = '(<p><em>Please correct the following errors before continuing:</em></p>\\r?\\n\\s*<ul>\\r?\\n\\s*<li>(.+?)</li>|<td class="trow1">(You have failed to login within the required number of attempts\\..+?)</td>)',
@@ -101,8 +101,7 @@ config['target'] = dict(
         query_login = 'action=do_login&url=http%3A%2F%2Fforum.singul4rity.com%2Findex.php&quick_login=1&quick_username={username}&quick_password={password}&submit=Login&quick_remember=yes',
         regex_logout = r'<!-- start: header_welcomeblock_guest -->',
         regex_url_logout = r'<a href="([^"]*)" class="logout">',
-        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>',
-        regex_friendlyredir = '<a href="([^"]+)">(<span class="smalltext">)?Click here if you don\'t want to wait any longer.'),
+        regex_empty = r'<td class="trow1">Sorry, but no results were returned using the query information you provided. Please redefine your search terms and try again.</td>'),
        
         xdwebhosting = dict(
         enable = True,
